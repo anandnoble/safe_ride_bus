@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { 
-  Bus, Camera, CheckCircle2, AlertTriangle, ShieldCheck, MapPin, Play, 
-  RotateCcw, Lock, RefreshCw, Radio, UserCheck, XCircle, Volume2
+  Bus, Camera, CheckCircle2, ShieldCheck, MapPin, Play, 
+  Lock, Radio, UserCheck, PhoneCall, ChevronRight, Navigation, Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -11,24 +11,22 @@ export default function DriverApp({
   onVerifyBoarding, 
   onSimulateGeofenceArrival,
   onManualOverride,
-  currentStopIndex,
-  onAdvanceStop
+  currentStopIndex
 }) {
+  const [activeTask, setActiveTask] = useState('DASHBOARD'); // DASHBOARD, SCANNER, ROSTER
   const [cameraActive, setCameraActive] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [scanResult, setScanResult] = useState(null); // { success: bool, student: obj, confidence: number }
+  const [scanResult, setScanResult] = useState(null);
   const [showManualModal, setShowManualModal] = useState(false);
   const [overridePin, setOverridePin] = useState('');
   const [selectedStudentForManual, setSelectedStudentForManual] = useState(null);
-  
+  const [gpsActive, setGpsActive] = useState(true);
+
   const videoRef = useRef(null);
 
   const currentStop = busData.stops[currentStopIndex] || busData.stops[2];
-
-  // Get students expected at current stop
   const currentStopStudents = students.filter(s => s.pickupStop.includes(currentStop.name.split(' ')[0]));
 
-  // Start real webcam stream if requested
   const startWebcam = async () => {
     try {
       setCameraActive(true);
@@ -37,11 +35,10 @@ export default function DriverApp({
         videoRef.current.srcObject = stream;
       }
     } catch (err) {
-      console.warn('Webcam permission not granted or unavailable, using high-tech camera preview simulation:', err);
+      console.warn('Webcam preview simulation mode active:', err);
     }
   };
 
-  // Stop webcam
   const stopWebcam = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       const tracks = videoRef.current.srcObject.getTracks();
@@ -50,15 +47,13 @@ export default function DriverApp({
     setCameraActive(false);
   };
 
-  // Perform facial recognition scan
-  const handlePerformFaceScan = (studentToScan) => {
+  const handlePerformScan = (studentToScan) => {
     setScanning(true);
     setScanResult(null);
 
     setTimeout(() => {
       setScanning(false);
-      const confidence = (94.5 + Math.random() * 5).toFixed(1);
-      
+      const confidence = (95.0 + Math.random() * 4.8).toFixed(1);
       const targetStudent = studentToScan || currentStopStudents.find(s => s.status === 'PENDING') || students[0];
 
       setScanResult({
@@ -67,322 +62,366 @@ export default function DriverApp({
         confidenceScore: parseFloat(confidence)
       });
 
-      // Trigger confetti celebration on driver app!
       confetti({
-        particleCount: 50,
-        spread: 60,
+        particleCount: 60,
+        spread: 70,
         origin: { y: 0.7 }
       });
 
-      // Call parent verify boarding handler (updates shared state)
       onVerifyBoarding(targetStudent.id, confidence);
-    }, 1500);
+    }, 1400);
   };
 
-  // Submit manual conductor PIN override
   const handleConfirmManualOverride = () => {
     if (selectedStudentForManual && overridePin === '1234') {
       onManualOverride(selectedStudentForManual.id);
       setShowManualModal(false);
       setOverridePin('');
       setSelectedStudentForManual(null);
-      alert(`Manual override successful for ${selectedStudentForManual.firstName}! Record saved as VERIFIED_MANUAL.`);
+      alert(`Manual verification saved for ${selectedStudentForManual.firstName}! Record updated.`);
     } else {
       alert('Invalid Conductor PIN. Use demo PIN: 1234');
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="android-phone-frame text-white">
       
-      {/* Mobile Device Viewport Wrapper */}
-      <div className="glass-panel p-6 space-y-6 border-2 border-blue-500/30 shadow-2xl">
-        
-        {/* Driver HUD Top Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-700/80">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-600/30">
-              <Bus className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-white">{busData.busNumber} HUD</h2>
-                <span className="badge badge-success text-[10px]">Active Shift</span>
-              </div>
-              <p className="text-xs text-slate-400">{busData.route} ({busData.driverName})</p>
-            </div>
-          </div>
+      {/* Android Top Speaker Notch */}
+      <div className="android-notch">
+        <div className="android-camera-lens" />
+      </div>
 
-          {/* GPS Broadcast Indicator */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-            <Radio className="w-4 h-4 animate-pulse" />
-            <span>GPS BROADCAST: ON</span>
+      {/* App Mobile Header */}
+      <div className="pt-9 px-5 pb-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-600/30">
+            <Bus className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-extrabold text-white">{busData.busNumber} Driver App</h2>
+            <p className="text-xs text-slate-400">{busData.driverName} • {busData.route}</p>
           </div>
         </div>
 
-        {/* Current Stop & Geofence Controller */}
-        <div className="glass-card p-4 space-y-3 bg-slate-900/80 border-slate-700">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-amber-400" />
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase">Current Stop Geofence</span>
-                <h3 className="text-sm font-bold text-white">{currentStop.name}</h3>
-              </div>
-            </div>
+        {/* GPS Live Toggle */}
+        <button
+          onClick={() => setGpsActive(!gpsActive)}
+          className={`px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 border transition-all ${
+            gpsActive 
+              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+              : 'bg-red-500/15 border-red-500/40 text-red-400'
+          }`}
+        >
+          <Radio className={`w-3.5 h-3.5 ${gpsActive ? 'animate-pulse' : ''}`} />
+          <span>{gpsActive ? 'GPS ON' : 'GPS OFF'}</span>
+        </button>
+      </div>
 
-            <div className="flex items-center gap-2">
+      {/* Main Task Content Area */}
+      <div className="flex-1 p-5 space-y-5 overflow-y-auto">
+        
+        {/* VIEW 1: TASK DASHBOARD */}
+        {activeTask === 'DASHBOARD' && (
+          <div className="space-y-5">
+            
+            {/* Current Route & Stop Status Card */}
+            <div className="p-5 rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/80 shadow-xl space-y-3">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span className="font-semibold uppercase tracking-wider">Current Stop Geofence</span>
+                <span className="text-emerald-400 font-bold">12m Inside Stop Radius</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">{currentStop.name}</h3>
+                <p className="text-xs text-slate-400">Sequence: Stop #{currentStop.order} of {busData.stops.length}</p>
+              </div>
+
+              {/* Task Button: Trigger Geofence Arrival */}
               <button
                 onClick={onSimulateGeofenceArrival}
-                className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all"
-                title="Trigger Stop Geofence Arrival (Sends Alert #1)"
-              >
-                <Play className="w-3.5 h-3.5 fill-amber-300" />
-                <span>Trigger Geofence Arrival</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
-            <span>Stop #{currentStop.order} of {busData.stops.length}</span>
-            <span>Speed: <strong className="text-white">{busData.speed}</strong></span>
-            <span>Distance to Stop: <strong className="text-emerald-400">12 meters (INSIDE GEOFENCE)</strong></span>
-          </div>
-        </div>
-
-        {/* Main Biometric Face Scanner Workspace */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Camera className="w-5 h-5 text-emerald-400" />
-              <h3 className="text-base font-bold text-white">Biometric Face Recognition System</h3>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {!cameraActive ? (
-                <button
-                  onClick={startWebcam}
-                  className="text-xs text-blue-400 hover:text-blue-300 underline font-medium"
-                >
-                  Enable Real Camera
-                </button>
-              ) : (
-                <button
-                  onClick={stopWebcam}
-                  className="text-xs text-red-400 hover:text-red-300 underline font-medium"
-                >
-                  Close Camera
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Camera Viewfinder Screen */}
-          <div className="relative h-[280px] rounded-2xl bg-black border-2 border-slate-700 overflow-hidden flex items-center justify-center shadow-inner">
-            
-            {/* Animated Face Scanner Overlay Grid */}
-            <div className="absolute inset-0 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px] opacity-20 pointer-events-none" />
-
-            {/* Scanning Laser Line */}
-            {scanning && <div className="animate-scan-line" />}
-
-            {/* Camera Video Stream or Simulated Student Target */}
-            {cameraActive ? (
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                muted 
-                className="w-full h-full object-cover" 
-              />
-            ) : (
-              <div className="relative w-full h-full flex items-center justify-center">
-                {scanResult?.success ? (
-                  <img 
-                    src={scanResult.student.avatarUrl} 
-                    alt="Scanned Student" 
-                    className="w-44 h-44 rounded-2xl object-cover border-4 border-emerald-500 shadow-2xl" 
-                  />
-                ) : (
-                  <div className="text-center p-6 space-y-3">
-                    <img 
-                      src={currentStopStudents.find(s => s.status === 'PENDING')?.avatarUrl || students[0].avatarUrl} 
-                      alt="Student Target" 
-                      className="w-32 h-32 rounded-2xl object-cover border-2 border-dashed border-blue-400/60 mx-auto" 
-                    />
-                    <p className="text-xs text-slate-400">Position student face within camera frame</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Bounding Box Face Target */}
-            <div className="absolute w-52 h-52 border-2 border-emerald-400/80 rounded-2xl pointer-events-none flex flex-col justify-between p-2 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-              <div className="flex justify-between">
-                <span className="w-4 h-4 border-t-2 border-l-2 border-emerald-400" />
-                <span className="w-4 h-4 border-t-2 border-r-2 border-emerald-400" />
-              </div>
-              {scanning && (
-                <div className="text-center">
-                  <span className="bg-emerald-500/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
-                    ANALYZING 512-D EMBEDDING...
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="w-4 h-4 border-b-2 border-l-2 border-emerald-400" />
-                <span className="w-4 h-4 border-b-2 border-r-2 border-emerald-400" />
-              </div>
-            </div>
-
-            {/* Verification Result Banner Overlay */}
-            {scanResult && (
-              <div className="absolute bottom-3 left-3 right-3 bg-emerald-900/90 backdrop-blur-md border border-emerald-400 text-white p-3 rounded-xl flex items-center justify-between animate-bounce">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-300" />
-                  <div>
-                    <h4 className="text-xs font-bold">{scanResult.student.firstName} {scanResult.student.lastName}</h4>
-                    <p className="text-[10px] text-emerald-200">Boarding Verified • {scanResult.confidenceScore}% Biometric Match</p>
-                  </div>
-                </div>
-                <span className="badge badge-success text-[10px]">Parent Alerted</span>
-              </div>
-            )}
-
-          </div>
-
-          {/* Action Scanning Controls */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => handlePerformFaceScan(currentStopStudents.find(s => s.status === 'PENDING'))}
-              disabled={scanning}
-              className="py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-            >
-              <Camera className="w-5 h-5" />
-              <span>{scanning ? "Scanning Vector..." : "Scan Student Face"}</span>
-            </button>
-
-            <button
-              onClick={() => setShowManualModal(true)}
-              className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 flex items-center justify-center gap-2 transition-all"
-            >
-              <Lock className="w-4 h-4 text-amber-400" />
-              <span>Conductor PIN Override</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Current Stop Expected Students Roster */}
-        <div className="space-y-3 pt-4 border-t border-slate-700/80">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-blue-400" />
-              <span>Stop Roster: Expected Students</span>
-            </h3>
-            <span className="text-xs text-slate-400">{currentStopStudents.length} Students Assigned</span>
-          </div>
-
-          <div className="space-y-2">
-            {currentStopStudents.map(student => (
-              <div 
-                key={student.id}
-                className="glass-card p-3 flex items-center justify-between hover:bg-slate-800/80 transition-all"
+                className="w-full mobile-action-btn mobile-action-btn-warning mt-2"
               >
                 <div className="flex items-center gap-3">
-                  <img 
-                    src={student.avatarUrl} 
-                    alt={student.firstName} 
-                    className="w-10 h-10 rounded-full object-cover border border-slate-700"
-                  />
-                  <div>
-                    <h4 className="text-xs font-bold text-white">{student.firstName} {student.lastName}</h4>
-                    <p className="text-[11px] text-slate-400">{student.id} • {student.grade}</p>
+                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Play className="w-5 h-5 fill-white" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-bold text-white uppercase">Task 1: Geofence Arrival</p>
+                    <p className="text-xs text-amber-100 font-medium">Send Alert #1 (Bus Arrived) to Parents</p>
                   </div>
                 </div>
+                <ChevronRight className="w-5 h-5 opacity-80" />
+              </button>
+            </div>
 
-                <div className="flex items-center gap-2">
+            {/* Core Driver Action Buttons */}
+            <div className="space-y-3">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Driver Actions</p>
+
+              {/* Task 2: Open Facial Recognition Scanner */}
+              <button
+                onClick={() => setActiveTask('SCANNER')}
+                className="w-full mobile-action-btn mobile-action-btn-primary"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-extrabold text-white">Scan Student Face</p>
+                    <p className="text-xs text-blue-100 font-normal">Biometric Boarding Verification</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              {/* Task 3: View Expected Student Roster */}
+              <button
+                onClick={() => setActiveTask('ROSTER')}
+                className="w-full mobile-action-btn"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-slate-700 flex items-center justify-center text-blue-400">
+                    <UserCheck className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-white">Expected Student Roster</p>
+                    <p className="text-xs text-slate-400 font-normal">{currentStopStudents.length} Students Assigned at Stop</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-slate-500" />
+              </button>
+
+              {/* Task 4: Conductor Manual PIN Override */}
+              <button
+                onClick={() => setShowManualModal(true)}
+                className="w-full mobile-action-btn"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-slate-700 flex items-center justify-center text-amber-400">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-white">Conductor PIN Override</p>
+                    <p className="text-xs text-slate-400 font-normal">Manual verification for scan failure</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+          </div>
+        )}
+
+        {/* VIEW 2: FACIAL RECOGNITION SCANNER */}
+        {activeTask === 'SCANNER' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <button 
+                onClick={() => setActiveTask('DASHBOARD')}
+                className="text-xs font-bold text-blue-400 hover:underline flex items-center gap-1"
+              >
+                ← Back to Tasks
+              </button>
+              <span className="text-xs text-slate-400">Point phone camera at student</span>
+            </div>
+
+            {/* Camera Viewfinder Screen */}
+            <div className="relative h-[320px] rounded-3xl bg-black border-2 border-slate-700 overflow-hidden flex items-center justify-center shadow-2xl">
+              
+              {scanning && <div className="laser-line" />}
+
+              {cameraActive ? (
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+              ) : (
+                <div className="relative w-full h-full flex flex-col items-center justify-center p-4">
+                  {scanResult?.success ? (
+                    <img 
+                      src={scanResult.student.avatarUrl} 
+                      alt="Scanned Student" 
+                      className="w-44 h-44 rounded-2xl object-cover border-4 border-emerald-500 shadow-2xl animate-pulse" 
+                    />
+                  ) : (
+                    <div className="text-center space-y-3">
+                      <img 
+                        src={currentStopStudents.find(s => s.status === 'PENDING')?.avatarUrl || students[0].avatarUrl} 
+                        alt="Student Target" 
+                        className="w-36 h-36 rounded-3xl object-cover border-2 border-dashed border-emerald-400/60 mx-auto" 
+                      />
+                      <p className="text-xs text-slate-400 font-medium">Position student face in center</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Bounding Corner Target */}
+              <div className="absolute w-56 h-56 border-2 border-emerald-400/80 rounded-3xl pointer-events-none flex flex-col justify-between p-3">
+                <div className="flex justify-between">
+                  <span className="w-5 h-5 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
+                  <span className="w-5 h-5 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
+                </div>
+                {scanning && (
+                  <div className="text-center">
+                    <span className="bg-emerald-500 text-slate-950 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg">
+                      512-D VECTOR MATCHING...
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="w-5 h-5 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
+                  <span className="w-5 h-5 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
+                </div>
+              </div>
+
+              {/* Success Result Popup */}
+              {scanResult && (
+                <div className="absolute bottom-3 left-3 right-3 bg-emerald-950/95 border border-emerald-400 p-3.5 rounded-2xl flex items-center justify-between text-white shadow-2xl">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-7 h-7 text-emerald-400 shrink-0" />
+                    <div>
+                      <h4 className="text-sm font-bold">{scanResult.student.firstName} {scanResult.student.lastName}</h4>
+                      <p className="text-[11px] text-emerald-300">Boarded • {scanResult.confidenceScore}% Biometric Match</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] bg-emerald-500 text-slate-950 font-extrabold px-2.5 py-1 rounded-full">ALERT #2 SENT</span>
+                </div>
+              )}
+
+            </div>
+
+            {/* Scan Action Buttons */}
+            <button
+              onClick={() => handlePerformScan(currentStopStudents.find(s => s.status === 'PENDING'))}
+              disabled={scanning}
+              className="w-full mobile-action-btn mobile-action-btn-success py-4 text-center justify-center text-base font-extrabold shadow-emerald-600/40"
+            >
+              <Camera className="w-5 h-5 mr-2 inline" />
+              <span>{scanning ? "Extracting & Matching..." : "Tap to Scan Student Face"}</span>
+            </button>
+          </div>
+        )}
+
+        {/* VIEW 3: EXPECTED ROSTER */}
+        {activeTask === 'ROSTER' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <button 
+                onClick={() => setActiveTask('DASHBOARD')}
+                className="text-xs font-bold text-blue-400 hover:underline"
+              >
+                ← Back to Tasks
+              </button>
+              <span className="text-xs text-slate-400">{currentStopStudents.length} Students</span>
+            </div>
+
+            <div className="space-y-3">
+              {currentStopStudents.map(student => (
+                <div key={student.id} className="p-4 rounded-2xl bg-slate-800 border border-slate-700/80 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <img src={student.avatarUrl} alt={student.firstName} className="w-12 h-12 rounded-2xl object-cover border border-slate-600" />
+                    <div>
+                      <h4 className="text-sm font-bold text-white">{student.firstName} {student.lastName}</h4>
+                      <p className="text-xs text-slate-400">{student.id} • {student.grade}</p>
+                    </div>
+                  </div>
+
                   {student.status === 'BOARDED' ? (
-                    <span className="badge badge-success">
+                    <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center gap-1 border border-emerald-500/30">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      Boarded ({student.boardingTime})
+                      Boarded
                     </span>
                   ) : (
                     <button
-                      onClick={() => handlePerformFaceScan(student)}
-                      className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-600/20 transition-all"
+                      onClick={() => {
+                        setActiveTask('SCANNER');
+                        handlePerformScan(student);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-500"
                     >
-                      Scan & Verify
+                      Scan Face
                     </button>
                   )}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
 
-      {/* Manual Override Conductor Modal */}
+      {/* Android Bottom Navigation Bar */}
+      <div className="android-bottom-nav">
+        <button 
+          onClick={() => setActiveTask('DASHBOARD')}
+          className={`android-nav-item ${activeTask === 'DASHBOARD' ? 'active' : ''}`}
+        >
+          <div className="nav-icon-wrapper">
+            <Bus className="w-5 h-5" />
+          </div>
+          <span>Tasks</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTask('SCANNER')}
+          className={`android-nav-item ${activeTask === 'SCANNER' ? 'active' : ''}`}
+        >
+          <div className="nav-icon-wrapper">
+            <Camera className="w-5 h-5" />
+          </div>
+          <span>Scan Face</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTask('ROSTER')}
+          className={`android-nav-item ${activeTask === 'ROSTER' ? 'active' : ''}`}
+        >
+          <div className="nav-icon-wrapper">
+            <UserCheck className="w-5 h-5" />
+          </div>
+          <span>Roster</span>
+        </button>
+      </div>
+
+      {/* Manual Override Modal */}
       {showManualModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-panel max-w-md w-full p-6 space-y-4 border-amber-500/40">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-700">
-              <div className="flex items-center gap-2 text-amber-400">
+          <div className="p-6 rounded-3xl bg-slate-900 border border-amber-500/40 max-w-sm w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <h3 className="text-base font-bold text-amber-400 flex items-center gap-2">
                 <Lock className="w-5 h-5" />
-                <h3 className="text-lg font-bold text-white">Conductor Manual Override</h3>
-              </div>
-              <button 
-                onClick={() => setShowManualModal(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                ✕
-              </button>
+                Conductor PIN Manual Override
+              </h3>
+              <button onClick={() => setShowManualModal(false)} className="text-slate-400">✕</button>
             </div>
 
-            <p className="text-xs text-slate-300">
-              Use manual verification if facial scan fails due to physical bandage, extreme sunlight, or camera issue.
-            </p>
-
-            {/* Select Student */}
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1">Select Student</label>
               <select
                 onChange={(e) => setSelectedStudentForManual(students.find(s => s.id === e.target.value))}
-                className="w-full p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white focus:outline-none focus:border-amber-500"
+                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white"
               >
-                <option value="">-- Choose Student from Roster --</option>
+                <option value="">-- Choose Student --</option>
                 {students.map(s => (
                   <option key={s.id} value={s.id}>{s.firstName} {s.lastName} ({s.id})</option>
                 ))}
               </select>
             </div>
 
-            {/* Enter Conductor PIN */}
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">Conductor Security PIN (Demo: 1234)</label>
+              <label className="text-xs font-semibold text-slate-300 block mb-1">Conductor PIN (Demo: 1234)</label>
               <input
                 type="password"
                 maxLength={4}
-                placeholder="Enter 4-digit PIN"
+                placeholder="1234"
                 value={overridePin}
                 onChange={(e) => setOverridePin(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-center tracking-widest text-base font-mono"
+                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-center font-mono text-lg tracking-widest"
               />
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={() => setShowManualModal(false)}
-                className="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmManualOverride}
-                className="w-1/2 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg shadow-amber-600/30"
-              >
-                Confirm Manual Boarding
-              </button>
+            <div className="flex gap-2">
+              <button onClick={() => setShowManualModal(false)} className="w-1/2 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">Cancel</button>
+              <button onClick={handleConfirmManualOverride} className="w-1/2 py-2.5 rounded-xl bg-amber-600 text-white text-xs font-bold">Confirm Boarding</button>
             </div>
           </div>
         </div>
