@@ -1,5 +1,5 @@
 import React from 'react';
-import { School, Bus, ShieldCheck, Play, Volume2, VolumeX, Smartphone, Monitor } from 'lucide-react';
+import { Bus, Smartphone, School, ShieldCheck, Play, Volume2, VolumeX } from 'lucide-react';
 
 export default function Header({ 
   activeTab, 
@@ -9,60 +9,57 @@ export default function Header({
   onSimulateGeofence 
 }) {
   return (
-    <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 lg:px-8 py-3.5 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+    <header className="bg-slate-900 border-b border-slate-800 px-4 lg:px-8 py-3 sticky top-0 z-50">
+      <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
         
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <ShieldCheck className="w-6 h-6 text-white" />
+        {/* Brand Logo */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-md shadow-blue-600/30">
+            <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black text-white">SafeRide AI</h1>
-              <span className="bg-emerald-500/15 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">Android Mobile Suite</span>
-            </div>
-            <p className="text-xs text-slate-400">Zero-Hardware Smart Student Transportation Safety</p>
+            <h1 className="text-base font-extrabold text-white tracking-tight">SafeRide AI</h1>
+            <p className="text-[11px] text-slate-400">Student Bus Safety Platform</p>
           </div>
         </div>
 
-        {/* Perspective Switcher Tabs */}
-        <div className="flex items-center bg-slate-950 p-1.5 rounded-2xl border border-slate-800 shadow-inner overflow-x-auto max-w-full">
+        {/* Simple 3 Perspective Switcher */}
+        <div className="flex items-center bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
           
           <button
-            onClick={() => setActiveTab('DRIVER')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
-              activeTab === 'DRIVER'
-                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/30'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Bus className="w-4 h-4" />
-            <span>🚌 Driver Android App</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('PARENT')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'PARENT'
-                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/30'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <Smartphone className="w-4 h-4" />
-            <span>📱 Parent Android App</span>
+            <span>1. Parent App</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('DRIVER')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'DRIVER'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Bus className="w-4 h-4" />
+            <span>2. Driver App</span>
           </button>
 
           <button
             onClick={() => setActiveTab('SCHOOL')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'SCHOOL'
-                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/30'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <School className="w-4 h-4" />
-            <span>🏫 School Web Admin</span>
+            <span>3. School Web</span>
           </button>
 
         </div>
@@ -71,16 +68,16 @@ export default function Header({
         <div className="flex items-center gap-2">
           <button
             onClick={onSimulateGeofence}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-all"
-            title="Trigger Stop Geofence Arrival (Sends Alert #1)"
+            className="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold hover:bg-amber-500/30 flex items-center gap-1.5 transition-all"
+            title="Simulate Bus Reaching Stop (Fires Bus Arrived Alert to Parent)"
           >
             <Play className="w-3.5 h-3.5 fill-amber-300" />
-            <span>Trigger Geofence</span>
+            <span>Bus Arrived Alert</span>
           </button>
 
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+            className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
           >
             {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-500" />}
           </button>
