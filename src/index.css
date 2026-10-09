@@ -3,16 +3,7 @@
 :root {
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-display: 'Outfit', var(--font-sans);
-  
   --bg-app: #080c14;
-  --bg-surface: #0f172a;
-  --bg-card: #1e293b;
-  --bg-card-hover: #334155;
-  
-  --primary-blue: #3b82f6;
-  --accent-emerald: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-red: #ef4444;
 }
 
 * {
@@ -37,67 +28,19 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
 }
 
-/* Glassmorphism Panels */
-.glass-container {
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-}
-
-.glass-card {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.glass-card:hover {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: rgba(59, 130, 246, 0.3);
-  transform: translateY(-2px);
-}
-
-/* Android Device Mockup Frame */
-.android-device-frame {
-  max-width: 420px;
+/* App Mobile Card Container */
+.app-mobile-container {
+  max-width: 480px;
   width: 100%;
   margin: 0 auto;
-  min-height: 820px;
-  background: #090d16;
-  border: 10px solid #1e293b;
-  border-radius: 46px;
-  box-shadow: 0 25px 70px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.12);
-  position: relative;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
-/* Android Top Status Bar */
-.android-status-bar {
-  height: 28px;
-  background: #090d16;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-  font-weight: 700;
-  color: #94a3b8;
-  z-index: 50;
-}
-
-.android-notch-pill {
-  width: 90px;
-  height: 18px;
-  background: #1e293b;
-  border-radius: 12px;
-  margin: 0 auto;
-}
-
-/* Modern Professional Action Buttons */
+/* Action Buttons */
 .app-btn {
   display: inline-flex;
   align-items: center;
@@ -107,49 +50,32 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 16px;
   font-weight: 700;
   font-size: 0.9rem;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease-in-out;
   cursor: pointer;
   border: none;
   outline: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .app-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .app-btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: #2563eb;
   color: #ffffff;
-  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
 }
 .app-btn-primary:hover {
-  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.5);
+  background: #1d4ed8;
 }
 
 .app-btn-success {
-  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+  background: #059669;
   color: #ffffff;
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4);
 }
 .app-btn-success:hover {
-  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.5);
-}
-
-.app-btn-warning {
-  background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
-  color: #ffffff;
-  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
-}
-
-.app-btn-secondary {
-  background: #1e293b;
-  color: #f8fafc;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-.app-btn-secondary:hover {
-  background: #334155;
-  border-color: rgba(255, 255, 255, 0.2);
+  background: #047857;
 }
 
 /* Laser Scan Line */
@@ -182,15 +108,12 @@ h1, h2, h3, h4, h5, h6 {
   background: #1e293b;
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #334155;
-}
 
-/* Leaflet Map Dark Overrides */
+/* Leaflet Dark Map Overrides */
 .leaflet-container {
   width: 100%;
   height: 100%;
-  border-radius: 20px;
+  border-radius: 16px;
   background-color: #0f172a !important;
 }
 
