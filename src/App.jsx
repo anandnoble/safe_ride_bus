@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import SchoolAdminPortal from './components/SchoolAdminPortal';
 import DriverApp from './components/DriverApp';
@@ -6,31 +6,68 @@ import ParentApp from './components/ParentApp';
 import RegisterStudentModal from './components/RegisterStudentModal';
 
 import { INITIAL_STUDENTS, INITIAL_BUS, INITIAL_NOTIFICATIONS } from './mockData';
-import { playSuccessChime, playNotificationChime, playWarningChime } from './utils/audio';
+import { playSuccessChime, playNotificationChime } from './utils/audio';
+import { 
+  isSupabaseConnected, 
+  fetchStudentsFromDB, 
+  updateBoardingInDB, 
+  insertNotificationInDB 
+} from './lib/supabaseClient';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('SCHOOL'); // 'SCHOOL', 'DRIVER', 'PARENT'
+  const [activeTab, setActiveTab] = useState('PARENT'); // 'PARENT', 'DRIVER', 'SCHOOL'
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Shared Application State across all 3 perspectives
+  // Shared Application State
   const [students, setStudents] = useState(INITIAL_STUDENTS);
   const [busData, setBusData] = useState(INITIAL_BUS);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
-  const [currentStopIndex, setCurrentStopIndex] = useState(2); // Stop #3: Green Valley Apartments
+  const [currentStopIndex, setCurrentStopIndex] = useState(2);
+  const [dbConnected, setDbConnected] = useState(false);
 
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
-  // Helper to format current time
+  // Check Supabase connection & fetch live records on load
+  useEffect(() => {
+    async function initSupabase() {
+      if (isSupabaseConnected()) {
+        setDbConnected(true);
+        const dbStudents = await fetchStudentsFromDB();
+        if (dbStudents && dbStudents.length > 0) {
+          // Map database schema fields to frontend student objects
+          const mapped = dbStudents.map(s => ({
+            id: s.student_official_id || s.id,
+            firstName: s.first_name,
+            lastName: s.last_name,
+            grade: s.grade_section || 'Grade 6-B',
+            parentName: 'Parent Guardian',
+            parentPhone: '+91 98765 43210',
+            assignedBus: 'Bus 01',
+            pickupStop: 'Green Valley Apartments (Stop #3)',
+            pickupCoords: [12.9716, 77.5946],
+            status: s.status || 'PENDING',
+            boardingTime: s.boarding_time,
+            verificationStatus: s.verification_status,
+            confidenceScore: s.confidence_score,
+            avatarUrl: s.avatar_url || "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=300&q=80",
+          }));
+          setStudents(mapped);
+        }
+      }
+    }
+    initSupabase();
+  }, []);
+
   const getCurrentTimeString = () => {
     const now = new Date();
     return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   // Handler: Driver verifies student boarding via facial scan
-  const handleVerifyBoarding = (studentId, confidenceScore) => {
+  const handleVerifyBoarding = async (studentId, confidenceScore) => {
     const timestamp = getCurrentTimeString();
     
-    // 1. Update Student record
+    // 1. Update local UI state immediately for zero-latency response
     setStudents(prevStudents => prevStudents.map(student => {
       if (student.id === studentId) {
         return {
@@ -44,7 +81,6 @@ export default function App() {
       return student;
     }));
 
-    // Find student for notification payload
     const targetStudent = students.find(s => s.id === studentId) || students[0];
 
     // 2. Dispatch Dual-Tier Alert #2 to Parent & School Admin
@@ -65,10 +101,16 @@ export default function App() {
     if (soundEnabled) {
       playSuccessChime();
     }
+
+    // 4. Sync live to Supabase Cloud Database!
+    if (isSupabaseConnected()) {
+      await updateBoardingInDB(studentId, confidenceScore, timestamp);
+      await insertNotificationInDB(newAlert);
+    }
   };
 
-  // Handler: Conductor manual PIN override verification
-  const handleManualOverride = (studentId) => {
+  // Handler: Conductor manual PIN override
+  const handleManualOverride = async (studentId) => {
     const timestamp = getCurrentTimeString();
 
     setStudents(prevStudents => prevStudents.map(student => {
@@ -102,28 +144,31 @@ export default function App() {
     if (soundEnabled) {
       playNotificationChime();
     }
+
+    if (isSupabaseConnected()) {
+      await updateBoardingInDB(studentId, 100, timestamp);
+      await insertNotificationInDB(newAlert);
+    }
   };
 
   // Handler: Simulate Bus arriving at registered stop geofence (Fires Alert #1)
-  const handleSimulateGeofenceArrival = () => {
+  const handleSimulateGeofenceArrival = async () => {
     const timestamp = getCurrentTimeString();
     const currentStop = busData.stops[currentStopIndex];
 
-    // Move bus location directly to Stop coordinates
     setBusData(prevBus => ({
       ...prevBus,
       currentCoords: currentStop.coords,
       speed: "12 km/h",
     }));
 
-    // Dispatch Alert #1 to Parent
     const newGeofenceAlert = {
       id: `NOTIF-${Date.now()}`,
       type: 'BUS_ARRIVED',
       title: `Bus Arrived at ${currentStop.name.split(' ')[0]} Stop`,
       message: `${busData.busNumber} has entered the pickup geofence for ${currentStop.name} at ${timestamp}.`,
       timestamp: timestamp,
-      studentId: "STD-1001", // Anand's stop
+      studentId: "STD-1001",
       studentName: "Anand Sharma",
       read: false,
     };
@@ -133,14 +178,16 @@ export default function App() {
     if (soundEnabled) {
       playNotificationChime();
     }
+
+    if (isSupabaseConnected()) {
+      await insertNotificationInDB(newGeofenceAlert);
+    }
   };
 
-  // Handler: Register new student
   const handleRegisterStudent = (newStudent) => {
     setStudents(prev => [newStudent, ...prev]);
   };
 
-  // Handler: Reset demo state
   const handleResetData = () => {
     setStudents(INITIAL_STUDENTS);
     setBusData(INITIAL_BUS);
@@ -151,20 +198,48 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       
-      {/* Top Header with Perspective Switcher */}
+      {/* Header Bar */}
       <Header 
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         soundEnabled={soundEnabled}
         setSoundEnabled={setSoundEnabled}
         onSimulateGeofence={handleSimulateGeofenceArrival}
-        currentStopName={busData.stops[currentStopIndex].name}
       />
 
-      {/* Main Dynamic Workspace Area based on selected Perspective */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8">
+      {/* Supabase Connection Status Banner */}
+      <div className="bg-slate-900 border-b border-slate-800 py-1.5 px-4 text-center text-xs">
+        <span className="inline-flex items-center gap-1.5 font-bold">
+          <span className={`w-2 h-2 rounded-full ${dbConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+          <span>Supabase Database Connection:</span>
+          <span className={dbConnected ? "text-emerald-400 font-mono" : "text-amber-400"}>
+            {dbConnected ? "CONNECTED (https://qedftfumikvtoolgwycx.supabase.co)" : "FALLBACK SYNC ACTIVE"}
+          </span>
+        </span>
+      </div>
+
+      {/* Main Workspace based on selected tab */}
+      <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6">
         
-        {/* Perspective 1: School Admin Web Portal */}
+        {activeTab === 'PARENT' && (
+          <ParentApp 
+            student={students[0]}
+            busData={busData}
+            notifications={notifications}
+          />
+        )}
+
+        {activeTab === 'DRIVER' && (
+          <DriverApp 
+            busData={busData}
+            students={students}
+            onVerifyBoarding={handleVerifyBoarding}
+            onSimulateGeofenceArrival={handleSimulateGeofenceArrival}
+            onManualOverride={handleManualOverride}
+            currentStopIndex={currentStopIndex}
+          />
+        )}
+
         {activeTab === 'SCHOOL' && (
           <SchoolAdminPortal 
             students={students}
@@ -175,36 +250,13 @@ export default function App() {
           />
         )}
 
-        {/* Perspective 2: Driver & Conductor App */}
-        {activeTab === 'DRIVER' && (
-          <DriverApp 
-            busData={busData}
-            students={students}
-            onVerifyBoarding={handleVerifyBoarding}
-            onSimulateGeofenceArrival={handleSimulateGeofenceArrival}
-            onManualOverride={handleManualOverride}
-            currentStopIndex={currentStopIndex}
-            onAdvanceStop={() => setCurrentStopIndex((prev) => (prev + 1) % busData.stops.length)}
-          />
-        )}
-
-        {/* Perspective 3: Parent Mobile App */}
-        {activeTab === 'PARENT' && (
-          <ParentApp 
-            student={students[0]} // Display Anand Sharma's parent portal
-            busData={busData}
-            notifications={notifications}
-          />
-        )}
-
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-900/60 border-t border-slate-800 text-center text-xs text-slate-500 py-4 mt-auto">
-        SafeRide AI Platform • Zero-Hardware Student Transportation Safety • Hackathon 2026 Prototype
+      <footer className="bg-slate-900/60 border-t border-slate-800 text-center text-[11px] text-slate-500 py-3 mt-auto">
+        SafeRide AI • Supabase PostgreSQL Cloud Connected • Hackathon Prototype
       </footer>
 
-      {/* Student Enrollment Modal */}
       <RegisterStudentModal 
         isOpen={isRegisterModalOpen}
         onClose={() => setIsRegisterModalOpen(false)}
