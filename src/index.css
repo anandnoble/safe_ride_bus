@@ -3,7 +3,20 @@
 :root {
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-display: 'Outfit', var(--font-sans);
-  --bg-app: #080c14;
+  
+  --bg-app: #090e17;
+  --bg-surface: #111827;
+  --bg-card: #1f293d;
+  --bg-card-hover: #2d3b55;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  
+  --primary: #2563eb;
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+  
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
 }
 
 * {
@@ -16,7 +29,7 @@
 body {
   font-family: var(--font-sans);
   background-color: var(--bg-app);
-  color: #f8fafc;
+  color: var(--text-main);
   line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
@@ -28,92 +41,160 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
 }
 
-/* App Mobile Card Container */
-.app-mobile-container {
-  max-width: 480px;
-  width: 100%;
-  margin: 0 auto;
-  background: #0f172a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-  overflow: hidden;
+/* Luxurious Card Containers */
+.saferide-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease-in-out;
 }
 
-/* Action Buttons */
-.app-btn {
+.saferide-card:hover {
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+/* Android Device Mockup Frame */
+.android-device-frame {
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: 840px;
+  background: #0b111e;
+  border: 10px solid #1f293d;
+  border-radius: 46px;
+  box-shadow: 0 25px 70px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.android-status-bar {
+  height: 28px;
+  background: #0b111e;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  z-index: 50;
+}
+
+.android-notch-pill {
+  width: 90px;
+  height: 18px;
+  background: #1f293d;
+  border-radius: 12px;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.status-boarded {
+  background: rgba(5, 150, 105, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(5, 150, 105, 0.4);
+}
+
+.status-not-boarded {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.status-failed {
+  background: rgba(220, 38, 38, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(220, 38, 38, 0.4);
+}
+
+.status-pending {
+  background: rgba(217, 119, 6, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(217, 119, 6, 0.4);
+}
+
+.status-dropped {
+  background: rgba(37, 99, 235, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(37, 99, 235, 0.4);
+}
+
+/* Primary Action Buttons */
+.btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 14px 20px;
+  gap: 8px;
+  padding: 14px 22px;
   border-radius: 16px;
-  font-weight: 700;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  font-weight: 800;
   font-size: 0.9rem;
-  transition: all 0.2s ease-in-out;
-  cursor: pointer;
   border: none;
-  outline: none;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.app-btn:active {
-  transform: scale(0.98);
+.btn-primary:active {
+  transform: scale(0.97);
 }
 
-.app-btn-primary {
-  background: #2563eb;
+.btn-success {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 22px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
-  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
-}
-.app-btn-primary:hover {
-  background: #1d4ed8;
-}
-
-.app-btn-success {
-  background: #059669;
-  color: #ffffff;
-  box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4);
-}
-.app-btn-success:hover {
-  background: #047857;
+  font-weight: 800;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.35);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Laser Scan Line */
-@keyframes scan-glow {
+/* Laser Scanner Animation */
+@keyframes laser-sweep {
   0% { top: 5%; opacity: 0.8; }
   50% { top: 90%; opacity: 1; }
   100% { top: 5%; opacity: 0.8; }
 }
 
-.scan-laser {
+.laser-sweep {
   position: absolute;
   left: 0;
   right: 0;
   height: 4px;
   background: #10b981;
   box-shadow: 0 0 20px #10b981, 0 0 40px #10b981;
-  animation: scan-glow 2s ease-in-out infinite;
+  animation: laser-sweep 2s ease-in-out infinite;
   z-index: 20;
 }
 
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #080c14;
-}
-::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 3px;
-}
-
-/* Leaflet Dark Map Overrides */
+/* Leaflet Map Dark Theme Overrides */
 .leaflet-container {
   width: 100%;
   height: 100%;
-  border-radius: 16px;
+  border-radius: 18px;
   background-color: #0f172a !important;
 }
 

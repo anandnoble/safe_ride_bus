@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
-import SchoolAdminPortal from './components/SchoolAdminPortal';
-import DriverApp from './components/DriverApp';
-import ParentApp from './components/ParentApp';
-import RegisterStudentModal from './components/RegisterStudentModal';
+import SchoolAdminDashboard from './components/SchoolAdminDashboard';
+import DriverMobileApp from './components/DriverMobileApp';
+import ParentMobileApp from './components/ParentMobileApp';
 
-import { INITIAL_STUDENTS, INITIAL_BUS, INITIAL_NOTIFICATIONS } from './mockData';
-import { playSuccessChime, playNotificationChime } from './utils/audio';
+import { 
+  INITIAL_STUDENTS, 
+  INITIAL_BUSES, 
+  INITIAL_NOTIFICATIONS, 
+  INITIAL_EVENT_TIMELINE 
+} from './mockData';
+import { playSuccessChime, playNotificationChime, playWarningChime } from './utils/audio';
 import { 
   isSupabaseConnected, 
   fetchStudentsFromDB, 
@@ -19,14 +23,12 @@ export default function App() {
   const [viewMode, setViewMode] = useState('MOBILE'); // 'MOBILE', 'FULL'
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Shared Application State
+  // Core Unified State
   const [students, setStudents] = useState(INITIAL_STUDENTS);
-  const [busData, setBusData] = useState(INITIAL_BUS);
+  const [buses, setBuses] = useState(INITIAL_BUSES);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
-  const [currentStopIndex, setCurrentStopIndex] = useState(2);
+  const [eventTimeline, setEventTimeline] = useState(INITIAL_EVENT_TIMELINE);
   const [dbConnected, setDbConnected] = useState(false);
-
-  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
   useEffect(() => {
     async function initSupabase() {
@@ -38,17 +40,23 @@ export default function App() {
             id: s.student_official_id || s.id,
             firstName: s.first_name,
             lastName: s.last_name,
-            grade: s.grade_section || 'Grade 6-B',
+            classSection: s.grade_section || 'Class 8 — Section A',
             parentName: 'Parent Guardian',
             parentPhone: '+91 98765 43210',
+            parentEmail: 'parent@example.com',
             assignedBus: 'Bus 01',
-            pickupStop: 'Green Valley Apartments (Stop #3)',
+            busId: 'BUS-01',
+            pickupStop: 'Stop 03 - Green Valley Apartments',
+            dropStop: 'Stop 03 - Green Valley Apartments',
             pickupCoords: [12.9716, 77.5946],
             status: s.status || 'PENDING',
             boardingTime: s.boarding_time,
-            verificationStatus: s.verification_status,
-            confidenceScore: s.confidence_score,
+            dropTime: null,
+            verificationStatus: s.verification_status || 'VERIFIED',
+            confidenceScore: s.confidence_score || 98.4,
             avatarUrl: s.avatar_url || "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=300&q=80",
+            faceRegistered: true,
+            consentStatus: 'Approved by Parent',
           }));
           setStudents(mapped);
         }
@@ -62,118 +70,131 @@ export default function App() {
     return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const handleVerifyBoarding = async (studentId, confidenceScore) => {
+  // Handler: Driver clicks PROCEED to finalize batch boarding
+  const handleFinalizeBoardingBatch = (validStudentsBatch) => {
     const timestamp = getCurrentTimeString();
-    
-    setStudents(prevStudents => prevStudents.map(student => {
-      if (student.id === studentId) {
+    const validIds = validStudentsBatch.map(s => s.id);
+
+    // 1. Update Students state
+    setStudents(prev => prev.map(s => {
+      if (validIds.includes(s.id)) {
         return {
-          ...student,
+          ...s,
           status: 'BOARDED',
           boardingTime: timestamp,
-          verificationStatus: 'VERIFIED_FACE',
-          confidenceScore: confidenceScore,
+          verificationStatus: 'VERIFIED',
+          confidenceScore: 98.4,
         };
       }
-      return student;
+      return s;
     }));
 
-    const targetStudent = students.find(s => s.id === studentId) || students[0];
+    // 2. Dispatch Notifications for each student
+    validStudentsBatch.forEach(studentObj => {
+      const notif = {
+        id: `NOTIF-${Date.now()}-${studentObj.id}`,
+        type: 'BOARDING_CONFIRMED',
+        title: 'Boarding Confirmed',
+        message: `Your child ${studentObj.firstName} has boarded Bus 01.`,
+        timestamp: timestamp,
+        studentId: studentObj.id,
+        studentName: `${studentObj.firstName} ${studentObj.lastName}`,
+      };
 
-    const newAlert = {
-      id: `NOTIF-${Date.now()}`,
-      type: 'STUDENT_BOARDED',
-      title: 'Boarding Confirmed',
-      message: `${targetStudent.firstName} ${targetStudent.lastName} has safely boarded ${busData.busNumber} at ${timestamp} (Verified via Biometrics ${confidenceScore}%).`,
-      timestamp: timestamp,
-      studentId: targetStudent.id,
-      studentName: `${targetStudent.firstName} ${targetStudent.lastName}`,
-      read: false,
-    };
+      setNotifications(prev => [notif, ...prev]);
 
-    setNotifications(prevNotifs => [newAlert, ...prevNotifs]);
+      if (isSupabaseConnected()) {
+        updateBoardingInDB(studentObj.id, 98.4, timestamp);
+        insertNotificationInDB(notif);
+      }
+    });
+
+    // 3. Add to Event Timeline
+    const newTimelineItems = validStudentsBatch.map(s => ({
+      time: timestamp,
+      event: `${s.firstName} ${s.lastName} (${s.id}) verified and boarded Bus 01 at Stop 03.`,
+      type: 'BOARDING',
+    }));
+    setEventTimeline(prev => [...newTimelineItems, ...prev]);
 
     if (soundEnabled) {
       playSuccessChime();
     }
-
-    if (isSupabaseConnected()) {
-      await updateBoardingInDB(studentId, confidenceScore, timestamp);
-      await insertNotificationInDB(newAlert);
-    }
   };
 
-  const handleManualOverride = async (studentId) => {
+  // Demo Handler: Simulate Bus Arrival at Stop 03 (Alert #1)
+  const handleSimulateGeofence = async () => {
     const timestamp = getCurrentTimeString();
+    
+    // Update student status to BUS_ARRIVED
+    setStudents(prev => prev.map(s => s.id === 'STU001' ? { ...s, status: 'BUS_ARRIVED' } : s));
 
-    setStudents(prevStudents => prevStudents.map(student => {
-      if (student.id === studentId) {
-        return {
-          ...student,
-          status: 'BOARDED',
-          boardingTime: timestamp,
-          verificationStatus: 'VERIFIED_MANUAL',
-          confidenceScore: 100,
-        };
-      }
-      return student;
-    }));
-
-    const targetStudent = students.find(s => s.id === studentId) || students[0];
-
-    const newAlert = {
-      id: `NOTIF-${Date.now()}`,
-      type: 'STUDENT_BOARDED',
-      title: 'Manual Boarding Verified',
-      message: `${targetStudent.firstName} ${targetStudent.lastName} manual boarding verified by Conductor at ${timestamp} (Code: 1234).`,
-      timestamp: timestamp,
-      studentId: targetStudent.id,
-      studentName: `${targetStudent.firstName} ${targetStudent.lastName}`,
-      read: false,
-    };
-
-    setNotifications(prevNotifs => [newAlert, ...prevNotifs]);
-
-    if (soundEnabled) {
-      playNotificationChime();
-    }
-
-    if (isSupabaseConnected()) {
-      await updateBoardingInDB(studentId, 100, timestamp);
-      await insertNotificationInDB(newAlert);
-    }
-  };
-
-  const handleSimulateGeofenceArrival = async () => {
-    const timestamp = getCurrentTimeString();
-    const currentStop = busData.stops[currentStopIndex];
-
-    setBusData(prevBus => ({
-      ...prevBus,
-      currentCoords: currentStop.coords,
-      speed: "12 km/h",
-    }));
-
-    const newGeofenceAlert = {
+    const notif = {
       id: `NOTIF-${Date.now()}`,
       type: 'BUS_ARRIVED',
-      title: `Bus Arrived at ${currentStop.name.split(' ')[0]} Stop`,
-      message: `${busData.busNumber} has entered the pickup geofence for ${currentStop.name} at ${timestamp}.`,
+      title: 'Bus Arrived',
+      message: 'Bus 01 has arrived at Stop 03.',
       timestamp: timestamp,
-      studentId: "STD-1001",
-      studentName: "Anand Sharma",
-      read: false,
+      studentId: 'STU001',
+      studentName: 'Aarav Sharma',
     };
 
-    setNotifications(prevNotifs => [newGeofenceAlert, ...prevNotifs]);
+    setNotifications(prev => [notif, ...prev]);
+    setEventTimeline(prev => [{ time: timestamp, event: 'Bus 01 arrived at Stop 03.', type: 'GEOFENCE' }, ...prev]);
 
-    if (soundEnabled) {
-      playNotificationChime();
-    }
+    if (soundEnabled) playNotificationChime();
+    if (isSupabaseConnected()) insertNotificationInDB(notif);
+  };
 
-    if (isSupabaseConnected()) {
-      await insertNotificationInDB(newGeofenceAlert);
-    }
+  // Demo Handler: Simulate Wrong Bus Attempt
+  const handleSimulateWrongBus = () => {
+    const timestamp = getCurrentTimeString();
+    if (soundEnabled) playWarningChime();
+
+    setEventTimeline(prev => [{ 
+      time: timestamp, 
+      event: 'EXCEPTION: Kavya Patel (Bus 04) attempted verification on Bus 01 at Stop 03. Flagged as Wrong Bus.', 
+      type: 'EXCEPTION' 
+    }, ...prev]);
+
+    alert('⚠️ WRONG BUS FLAG: Student Kavya Patel is assigned to Bus 04! Boarding blocked and exception logged.');
+  };
+
+  // Demo Handler: Simulate Unregistered Student Attempt
+  const handleSimulateUnregistered = () => {
+    const timestamp = getCurrentTimeString();
+    if (soundEnabled) playWarningChime();
+
+    setEventTimeline(prev => [{ 
+      time: timestamp, 
+      event: 'EXCEPTION: Unregistered face detected at Stop 03. Boarding blocked.', 
+      type: 'EXCEPTION' 
+    }, ...prev]);
+
+    alert('✕ UNREGISTERED STUDENT: This face is not registered in the SafeRide AI database! Boarding blocked.');
+  };
+
+  // Demo Handler: Simulate Drop-Off Event
+  const handleSimulateDropOff = async () => {
+    const timestamp = getCurrentTimeString();
+    
+    setStudents(prev => prev.map(s => s.id === 'STU001' ? { ...s, status: 'DROPPED_OFF', dropTime: timestamp } : s));
+
+    const notif = {
+      id: `NOTIF-${Date.now()}`,
+      type: 'DROP_OFF',
+      title: 'Drop-off Recorded',
+      message: 'Your child has been recorded as dropped off at the registered stop.',
+      timestamp: timestamp,
+      studentId: 'STU001',
+      studentName: 'Aarav Sharma',
+    };
+
+    setNotifications(prev => [notif, ...prev]);
+    setEventTimeline(prev => [{ time: timestamp, event: 'Aarav Sharma dropped off safely at Stop 03.', type: 'DROPOFF' }, ...prev]);
+
+    if (soundEnabled) playNotificationChime();
+    if (isSupabaseConnected()) insertNotificationInDB(notif);
   };
 
   const handleRegisterStudent = (newStudent) => {
@@ -182,9 +203,9 @@ export default function App() {
 
   const handleResetData = () => {
     setStudents(INITIAL_STUDENTS);
-    setBusData(INITIAL_BUS);
+    setBuses(INITIAL_BUSES);
     setNotifications(INITIAL_NOTIFICATIONS);
-    setCurrentStopIndex(2);
+    setEventTimeline(INITIAL_EVENT_TIMELINE);
   };
 
   return (
@@ -196,13 +217,16 @@ export default function App() {
         setActiveTab={setActiveTab}
         soundEnabled={soundEnabled}
         setSoundEnabled={setSoundEnabled}
-        onSimulateGeofence={handleSimulateGeofenceArrival}
+        onSimulateGeofence={handleSimulateGeofence}
+        onSimulateWrongBus={handleSimulateWrongBus}
+        onSimulateUnregistered={handleSimulateUnregistered}
+        onSimulateDropOff={handleSimulateDropOff}
         viewMode={viewMode}
         setViewMode={setViewMode}
       />
 
-      {/* Connection Indicator */}
-      <div className="bg-slate-900 border-b border-slate-800/80 py-1.5 px-4 text-center text-xs">
+      {/* Supabase Connection Bar */}
+      <div className="bg-slate-900 border-b border-slate-800 py-1.5 px-4 text-center text-xs">
         <span className="inline-flex items-center gap-2 font-bold">
           <span className={`w-2 h-2 rounded-full ${dbConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
           <span>Supabase PostgreSQL Cloud:</span>
@@ -212,36 +236,35 @@ export default function App() {
         </span>
       </div>
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
+      {/* Main Perspective Workspace */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
         
         {activeTab === 'PARENT' && (
-          <ParentApp 
+          <ParentMobileApp 
             student={students[0]}
-            busData={busData}
+            busData={buses[0]}
             notifications={notifications}
             viewMode={viewMode}
           />
         )}
 
         {activeTab === 'DRIVER' && (
-          <DriverApp 
-            busData={busData}
+          <DriverMobileApp 
+            busData={buses[0]}
             students={students}
-            onVerifyBoarding={handleVerifyBoarding}
-            onSimulateGeofenceArrival={handleSimulateGeofenceArrival}
-            onManualOverride={handleManualOverride}
-            currentStopIndex={currentStopIndex}
+            onFinalizeBoardingBatch={handleFinalizeBoardingBatch}
+            onSimulateGeofenceArrival={handleSimulateGeofence}
             viewMode={viewMode}
           />
         )}
 
         {activeTab === 'SCHOOL' && (
-          <SchoolAdminPortal 
+          <SchoolAdminDashboard 
             students={students}
-            busData={busData}
+            buses={buses}
             notifications={notifications}
-            onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
+            eventTimeline={eventTimeline}
+            onRegisterStudent={handleRegisterStudent}
             onResetData={handleResetData}
           />
         )}
@@ -249,15 +272,9 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-900/60 border-t border-slate-800/80 text-center text-[11px] text-slate-500 py-3 mt-auto">
-        SafeRide AI Pro Suite • Supabase PostgreSQL Cloud Sync • Zero-Hardware Student Safety
+      <footer className="bg-slate-900/60 border-t border-slate-800 text-center text-[11px] text-slate-500 py-3 mt-auto">
+        SafeRide AI • "Every Stop Matters. Every Student Counts." • Zero-Hardware Student Safety
       </footer>
-
-      <RegisterStudentModal 
-        isOpen={isRegisterModalOpen}
-        onClose={() => setIsRegisterModalOpen(false)}
-        onRegisterStudent={handleRegisterStudent}
-      />
 
     </div>
   );
