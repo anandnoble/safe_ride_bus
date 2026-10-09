@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  Bus, Bell, CheckCircle2, MapPin, Phone, ShieldCheck, Clock, Navigation, AlertTriangle
+  Bus, Bell, CheckCircle2, MapPin, Phone, ShieldCheck, Clock, Navigation, AlertCircle
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
@@ -21,13 +21,21 @@ const homeStopIcon = new L.Icon({
 });
 
 export default function ParentMobileApp({ student, busData, notifications, viewMode = 'MOBILE' }) {
-  const childNotifs = notifications.filter(n => n.studentId === student.id || !n.studentId);
-  const routePolyline = busData.stops.map(s => s.coords);
+  if (!student || !busData) {
+    return (
+      <div className="p-8 text-center text-slate-400">
+        Loading Parent Safety Portal...
+      </div>
+    );
+  }
+
+  const childNotifs = notifications ? notifications.filter(n => n.studentId === student.id || !n.studentId) : [];
+  const routePolyline = busData.stops ? busData.stops.map(s => s.coords) : [busData.currentCoords];
 
   const content = (
     <div className="flex-1 flex flex-col justify-between overflow-y-auto">
       
-      {/* Top Mobile Bar */}
+      {/* Top Header */}
       <div className="pt-3 px-5 pb-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img 
@@ -50,7 +58,7 @@ export default function ParentMobileApp({ student, busData, notifications, viewM
         </a>
       </div>
 
-      {/* Main Workspace */}
+      {/* Main Content */}
       <div className="p-5 space-y-4">
         
         {/* LARGE PREMIUM STATUS CARD */}
@@ -121,19 +129,33 @@ export default function ParentMobileApp({ student, busData, notifications, viewM
             <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Bell className="w-4 h-4 text-amber-400" /> Notifications Feed
             </span>
-            <span className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-md">{childNotifs.length} Alerts</span>
+            <span className="text-[10px] bg-amber-500/20 text-amber-300 font-extrabold px-2 py-0.5 rounded-md">{childNotifs.length} Alerts</span>
           </div>
 
-          <div className="space-y-2">
-            {childNotifs.map(notif => (
-              <div key={notif.id} className="p-3 rounded-2xl bg-slate-800 border border-slate-700 space-y-1">
-                <div className="flex justify-between items-center text-xs">
-                  <strong className="text-white">{notif.title}</strong>
-                  <span className="text-[10px] text-slate-400">{notif.timestamp}</span>
+          <div className="space-y-2.5">
+            {childNotifs.length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-6">Waiting for bus arrival alerts...</p>
+            ) : (
+              childNotifs.map(notif => (
+                <div 
+                  key={notif.id}
+                  className={`p-3 rounded-2xl border-l-4 ${
+                    notif.type === 'BOARDING_CONFIRMED' || notif.type === 'STUDENT_BOARDED' 
+                      ? 'border-l-emerald-500 bg-emerald-950/30' 
+                      : 'border-l-amber-500 bg-amber-950/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      {notif.title}
+                    </h5>
+                    <span className="text-[10px] text-slate-400">{notif.timestamp}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1 pl-5 leading-relaxed">{notif.message}</p>
                 </div>
-                <p className="text-xs text-slate-300">{notif.message}</p>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 

@@ -138,6 +138,12 @@ export const INITIAL_BUSES = [
     studentsExpected: 32,
     studentsBoarded: 29,
     studentsNotBoarded: 3,
+    stops: [
+      { id: "STOP-01", name: "Stop 01 - Central Terminal", coords: [12.9800, 77.5850], order: 1 },
+      { id: "STOP-02", name: "Stop 02 - Oakwood Park Gate", coords: [12.9760, 77.5890], order: 2 },
+      { id: "STOP-03", name: "Stop 03 - Green Valley Apartments", coords: [12.9716, 77.5946], order: 3 },
+      { id: "STOP-04", name: "Stop 04 - Sunrise Circle", coords: [12.9680, 77.6000], order: 4 }
+    ]
   },
   {
     id: "BUS-02",
@@ -154,6 +160,11 @@ export const INITIAL_BUSES = [
     studentsExpected: 28,
     studentsBoarded: 26,
     studentsNotBoarded: 2,
+    stops: [
+      { id: "STOP-01", name: "Stop 01 - Central Terminal", coords: [12.9800, 77.5850], order: 1 },
+      { id: "STOP-02", name: "Stop 02 - Oakwood Park Gate", coords: [12.9760, 77.5890], order: 2 },
+      { id: "STOP-03", name: "Stop 03 - Green Valley Apartments", coords: [12.9716, 77.5946], order: 3 }
+    ]
   },
   {
     id: "BUS-03",
@@ -170,6 +181,9 @@ export const INITIAL_BUSES = [
     studentsExpected: 35,
     studentsBoarded: 35,
     studentsNotBoarded: 0,
+    stops: [
+      { id: "STOP-01", name: "Stop 01 - Central Terminal", coords: [12.9800, 77.5850], order: 1 }
+    ]
   },
   {
     id: "BUS-04",
@@ -186,6 +200,9 @@ export const INITIAL_BUSES = [
     studentsExpected: 31,
     studentsBoarded: 28,
     studentsNotBoarded: 3,
+    stops: [
+      { id: "STOP-01", name: "Stop 01 - Blueberry Hills", coords: [12.9600, 77.6100], order: 1 }
+    ]
   }
 ];
 
