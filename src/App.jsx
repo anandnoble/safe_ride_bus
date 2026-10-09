@@ -16,6 +16,7 @@ import {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('PARENT'); // 'PARENT', 'DRIVER', 'SCHOOL'
+  const [viewMode, setViewMode] = useState('MOBILE'); // 'MOBILE', 'FULL'
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Shared Application State
@@ -27,14 +28,12 @@ export default function App() {
 
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
-  // Check Supabase connection & fetch live records on load
   useEffect(() => {
     async function initSupabase() {
       if (isSupabaseConnected()) {
         setDbConnected(true);
         const dbStudents = await fetchStudentsFromDB();
         if (dbStudents && dbStudents.length > 0) {
-          // Map database schema fields to frontend student objects
           const mapped = dbStudents.map(s => ({
             id: s.student_official_id || s.id,
             firstName: s.first_name,
@@ -63,11 +62,9 @@ export default function App() {
     return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Handler: Driver verifies student boarding via facial scan
   const handleVerifyBoarding = async (studentId, confidenceScore) => {
     const timestamp = getCurrentTimeString();
     
-    // 1. Update local UI state immediately for zero-latency response
     setStudents(prevStudents => prevStudents.map(student => {
       if (student.id === studentId) {
         return {
@@ -83,7 +80,6 @@ export default function App() {
 
     const targetStudent = students.find(s => s.id === studentId) || students[0];
 
-    // 2. Dispatch Dual-Tier Alert #2 to Parent & School Admin
     const newAlert = {
       id: `NOTIF-${Date.now()}`,
       type: 'STUDENT_BOARDED',
@@ -97,19 +93,16 @@ export default function App() {
 
     setNotifications(prevNotifs => [newAlert, ...prevNotifs]);
 
-    // 3. Play audio chime if enabled
     if (soundEnabled) {
       playSuccessChime();
     }
 
-    // 4. Sync live to Supabase Cloud Database!
     if (isSupabaseConnected()) {
       await updateBoardingInDB(studentId, confidenceScore, timestamp);
       await insertNotificationInDB(newAlert);
     }
   };
 
-  // Handler: Conductor manual PIN override
   const handleManualOverride = async (studentId) => {
     const timestamp = getCurrentTimeString();
 
@@ -151,7 +144,6 @@ export default function App() {
     }
   };
 
-  // Handler: Simulate Bus arriving at registered stop geofence (Fires Alert #1)
   const handleSimulateGeofenceArrival = async () => {
     const timestamp = getCurrentTimeString();
     const currentStop = busData.stops[currentStopIndex];
@@ -205,27 +197,30 @@ export default function App() {
         soundEnabled={soundEnabled}
         setSoundEnabled={setSoundEnabled}
         onSimulateGeofence={handleSimulateGeofenceArrival}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
       />
 
-      {/* Supabase Connection Status Banner */}
-      <div className="bg-slate-900 border-b border-slate-800 py-1.5 px-4 text-center text-xs">
-        <span className="inline-flex items-center gap-1.5 font-bold">
+      {/* Connection Indicator */}
+      <div className="bg-slate-900 border-b border-slate-800/80 py-1.5 px-4 text-center text-xs">
+        <span className="inline-flex items-center gap-2 font-bold">
           <span className={`w-2 h-2 rounded-full ${dbConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-          <span>Supabase Database Connection:</span>
+          <span>Supabase PostgreSQL Cloud:</span>
           <span className={dbConnected ? "text-emerald-400 font-mono" : "text-amber-400"}>
-            {dbConnected ? "CONNECTED (https://qedftfumikvtoolgwycx.supabase.co)" : "FALLBACK SYNC ACTIVE"}
+            {dbConnected ? "CONNECTED (https://qedftfumikvtoolgwycx.supabase.co)" : "LOCAL FALLBACK ACTIVE"}
           </span>
         </span>
       </div>
 
-      {/* Main Workspace based on selected tab */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6">
+      {/* Main Container */}
+      <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
         
         {activeTab === 'PARENT' && (
           <ParentApp 
             student={students[0]}
             busData={busData}
             notifications={notifications}
+            viewMode={viewMode}
           />
         )}
 
@@ -237,6 +232,7 @@ export default function App() {
             onSimulateGeofenceArrival={handleSimulateGeofenceArrival}
             onManualOverride={handleManualOverride}
             currentStopIndex={currentStopIndex}
+            viewMode={viewMode}
           />
         )}
 
@@ -253,8 +249,8 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-900/60 border-t border-slate-800 text-center text-[11px] text-slate-500 py-3 mt-auto">
-        SafeRide AI • Supabase PostgreSQL Cloud Connected • Hackathon Prototype
+      <footer className="bg-slate-900/60 border-t border-slate-800/80 text-center text-[11px] text-slate-500 py-3 mt-auto">
+        SafeRide AI Pro Suite • Supabase PostgreSQL Cloud Sync • Zero-Hardware Student Safety
       </footer>
 
       <RegisterStudentModal 

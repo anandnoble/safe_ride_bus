@@ -4,19 +4,15 @@
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-display: 'Outfit', var(--font-sans);
   
-  --bg-app: #0b0f19;
-  --bg-card: #151c2c;
-  --bg-card-hover: #1e293d;
-  --border-card: rgba(255, 255, 255, 0.08);
+  --bg-app: #080c14;
+  --bg-surface: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
   
-  --primary: #3b82f6;
-  --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  
-  --text-main: #f8fafc;
-  --text-sub: #94a3b8;
+  --primary-blue: #3b82f6;
+  --accent-emerald: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-red: #ef4444;
 }
 
 * {
@@ -29,151 +25,168 @@
 body {
   font-family: var(--font-sans);
   background-color: var(--bg-app);
-  color: var(--text-main);
+  color: #f8fafc;
   line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Smartphone Mockup Frame */
-.android-phone-frame {
-  max-width: 430px;
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* Glassmorphism Panels */
+.glass-container {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.glass-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card:hover {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(59, 130, 246, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Android Device Mockup Frame */
+.android-device-frame {
+  max-width: 420px;
   width: 100%;
   margin: 0 auto;
-  min-height: 840px;
-  background: #0f172a;
-  border: 12px solid #1e293b;
-  border-radius: 48px;
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  min-height: 820px;
+  background: #090d16;
+  border: 10px solid #1e293b;
+  border-radius: 46px;
+  box-shadow: 0 25px 70px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.12);
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-/* Camera Notch / Speaker Island */
-.android-notch {
-  width: 120px;
-  height: 24px;
+/* Android Top Status Bar */
+.android-status-bar {
+  height: 28px;
   background: #090d16;
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  border-b-lh-radius: 16px;
-  border-b-rh-radius: 16px;
-  border-bottom-left-radius: 16px;
-  border-bottom-right-radius: 16px;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.android-camera-lens {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #1e293b;
-  border: 2px solid #334155;
-}
-
-/* Mobile Touch Buttons */
-.mobile-action-btn {
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
-  border-radius: 20px;
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.95rem;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-}
-
-.mobile-action-btn:active {
-  transform: scale(0.97);
-  background: #334155;
-}
-
-.mobile-action-btn-primary {
-  background: var(--primary-gradient);
-  border: none;
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
-}
-
-.mobile-action-btn-success {
-  background: var(--success-gradient);
-  border: none;
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35);
-}
-
-.mobile-action-btn-warning {
-  background: var(--warning-gradient);
-  border: none;
-  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.35);
-}
-
-/* Android Bottom Navigation Bar */
-.android-bottom-nav {
-  height: 68px;
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(16px);
-  border-t: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding-bottom: 8px;
-}
-
-.android-nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  color: #94a3b8;
   font-size: 11px;
-  font-weight: 600;
-  transition: all 0.2s;
-  cursor: pointer;
-  background: transparent;
-  border: none;
+  font-weight: 700;
+  color: #94a3b8;
+  z-index: 50;
 }
 
-.android-nav-item.active {
-  color: #3b82f6;
+.android-notch-pill {
+  width: 90px;
+  height: 18px;
+  background: #1e293b;
+  border-radius: 12px;
+  margin: 0 auto;
 }
 
-.android-nav-item.active .nav-icon-wrapper {
-  background: rgba(59, 130, 246, 0.15);
+/* Modern Professional Action Buttons */
+.app-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px;
   border-radius: 16px;
-  padding: 4px 16px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  border: none;
+  outline: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* Scanner Laser Line */
-@keyframes laser-scan {
+.app-btn:active {
+  transform: scale(0.97);
+}
+
+.app-btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+}
+.app-btn-primary:hover {
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.5);
+}
+
+.app-btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+.app-btn-success:hover {
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.5);
+}
+
+.app-btn-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+}
+
+.app-btn-secondary {
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.app-btn-secondary:hover {
+  background: #334155;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Laser Scan Line */
+@keyframes scan-glow {
   0% { top: 5%; opacity: 0.8; }
   50% { top: 90%; opacity: 1; }
   100% { top: 5%; opacity: 0.8; }
 }
 
-.laser-line {
+.scan-laser {
   position: absolute;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 4px;
   background: #10b981;
-  box-shadow: 0 0 15px #10b981, 0 0 30px #10b981;
-  animation: laser-scan 2s ease-in-out infinite;
+  box-shadow: 0 0 20px #10b981, 0 0 40px #10b981;
+  animation: scan-glow 2s ease-in-out infinite;
   z-index: 20;
 }
 
-/* Leaflet Dark Map */
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #080c14;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Leaflet Map Dark Overrides */
 .leaflet-container {
   width: 100%;
   height: 100%;
@@ -182,5 +195,5 @@ body {
 }
 
 .leaflet-tile {
-  filter: brightness(0.75) invert(1) contrast(1.2) hue-rotate(200deg) saturate(0.4);
+  filter: brightness(0.75) invert(1) contrast(1.25) hue-rotate(200deg) saturate(0.35);
 }
