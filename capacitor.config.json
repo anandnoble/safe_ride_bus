@@ -1,0 +1,8 @@
+{
+  "appId": "com.saferide.app",
+  "appName": "SafeRide AI",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
