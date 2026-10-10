@@ -16,7 +16,7 @@ export function isSupabaseConnected() {
 }
 
 /**
- * Fetch all students from Supabase (or fallback)
+ * Fetch all students from Supabase
  */
 export async function fetchStudentsFromDB() {
   if (!supabase) return null;
@@ -38,7 +38,28 @@ export async function fetchStudentsFromDB() {
 }
 
 /**
- * Update boarding verification in Supabase
+ * Fetch active buses from Supabase
+ */
+export async function fetchBusesFromDB() {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('buses')
+      .select('*');
+
+    if (error) {
+      console.error('Supabase buses fetch error:', error);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.error('Supabase error:', err);
+    return null;
+  }
+}
+
+/**
+ * Update student boarding verification in Supabase
  */
 export async function updateBoardingInDB(studentId, confidenceScore, timestamp) {
   if (!supabase) return null;
@@ -57,6 +78,29 @@ export async function updateBoardingInDB(studentId, confidenceScore, timestamp) 
     return data;
   } catch (err) {
     console.error('Supabase update error:', err);
+    return null;
+  }
+}
+
+/**
+ * Real-time GPS telematics update for driver device
+ */
+export async function updateBusGPSInDB(busId, lat, lng, speed = '22 km/h') {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('buses')
+      .update({
+        current_lat: lat,
+        current_lng: lng,
+        speed: speed,
+      })
+      .eq('id', busId);
+
+    if (error) console.error('Supabase GPS update error:', error);
+    return data;
+  } catch (err) {
+    console.error('Supabase GPS error:', err);
     return null;
   }
 }
@@ -82,4 +126,36 @@ export async function insertNotificationInDB(notification) {
     console.error('Supabase insert error:', err);
     return null;
   }
+}
+
+/**
+ * Realtime Subscription for Live Student Boarding Updates
+ */
+export function subscribeToStudentChanges(onUpdate) {
+  if (!supabase) return null;
+  
+  const channel = supabase
+    .channel('realtime-students')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, payload => {
+      if (onUpdate) onUpdate(payload);
+    })
+    .subscribe();
+
+  return channel;
+}
+
+/**
+ * Realtime Subscription for Bus Location GPS
+ */
+export function subscribeToBusGPS(onUpdate) {
+  if (!supabase) return null;
+
+  const channel = supabase
+    .channel('realtime-buses')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'buses' }, payload => {
+      if (onUpdate) onUpdate(payload);
+    })
+    .subscribe();
+
+  return channel;
 }

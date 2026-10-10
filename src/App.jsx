@@ -14,14 +14,19 @@ import { playSuccessChime, playNotificationChime, playWarningChime } from './uti
 import { 
   isSupabaseConnected, 
   fetchStudentsFromDB, 
+  fetchBusesFromDB,
   updateBoardingInDB, 
-  insertNotificationInDB 
+  insertNotificationInDB,
+  subscribeToStudentChanges,
+  subscribeToBusGPS
 } from './lib/supabaseClient';
+import { detectRouteDeviation } from './utils/aiEngine';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('PARENT'); // 'PARENT', 'DRIVER', 'SCHOOL'
   const [viewMode, setViewMode] = useState('MOBILE'); // 'MOBILE', 'FULL'
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   // Core Unified State
   const [students, setStudents] = useState(INITIAL_STUDENTS);
@@ -60,6 +65,19 @@ export default function App() {
           }));
           setStudents(mapped);
         }
+
+        // Subscribe to Real-Time Updates across devices
+        subscribeToStudentChanges((payload) => {
+          if (payload.new) {
+            setStudents(prev => prev.map(s => s.id === payload.new.id ? { ...s, status: payload.new.status } : s));
+          }
+        });
+
+        subscribeToBusGPS((payload) => {
+          if (payload.new) {
+            setBuses(prev => prev.map(b => b.id === payload.new.id ? { ...b, currentCoords: [payload.new.current_lat, payload.new.current_lng], speed: payload.new.speed } : b));
+          }
+        });
       }
     }
     initSupabase();
@@ -122,11 +140,10 @@ export default function App() {
     }
   };
 
-  // Demo Handler: Simulate Bus Arrival at Stop 03 (Alert #1)
+  // Demo Handler: Simulate Bus Arrival at Stop 03
   const handleSimulateGeofence = async () => {
     const timestamp = getCurrentTimeString();
     
-    // Update student status to BUS_ARRIVED
     setStudents(prev => prev.map(s => s.id === 'STU001' ? { ...s, status: 'BUS_ARRIVED' } : s));
 
     const notif = {
@@ -171,7 +188,53 @@ export default function App() {
       type: 'EXCEPTION' 
     }, ...prev]);
 
-    alert('✕ UNREGISTERED STUDENT: This face is not registered in the SafeRide AI database! Boarding blocked.');
+    alert('✕ UNREGISTERED STUDENT: Face not registered in SafeRide AI database! Boarding blocked.');
+  };
+
+  // Demo Handler: AI Route Deviation Alert Scenario
+  const handleSimulateRouteDeviation = () => {
+    const timestamp = getCurrentTimeString();
+    if (soundEnabled) playWarningChime();
+
+    const notif = {
+      id: `NOTIF-DEV-${Date.now()}`,
+      type: 'ROUTE_DEVIATION',
+      title: 'AI Alert: Route Deviation',
+      message: 'Bus 01 is 320m off designated route path near Stop 03.',
+      timestamp: timestamp,
+    };
+
+    setNotifications(prev => [notif, ...prev]);
+    setEventTimeline(prev => [{ 
+      time: timestamp, 
+      event: 'AI ALERT: Bus 01 route deviation detected (320m off path). Transport admin notified.', 
+      type: 'EXCEPTION' 
+    }, ...prev]);
+
+    alert('🚨 AI ROUTE DEVIATION DETECTED: Bus 01 is 320 meters off designated route! Exception logged.');
+  };
+
+  // Emergency SOS Handler
+  const handleSOSTriggered = (driverName) => {
+    const timestamp = getCurrentTimeString();
+    if (soundEnabled) playWarningChime();
+
+    const notif = {
+      id: `NOTIF-SOS-${Date.now()}`,
+      type: 'EMERGENCY_SOS',
+      title: '🚨 EMERGENCY SOS ALERT',
+      message: `Driver ${driverName || 'Suresh Kumar'} triggered emergency panic button on Bus 01.`,
+      timestamp: timestamp,
+    };
+
+    setNotifications(prev => [notif, ...prev]);
+    setEventTimeline(prev => [{ 
+      time: timestamp, 
+      event: `CRITICAL EMERGENCY: Driver ${driverName || 'Suresh Kumar'} triggered SOS panic alert on Bus 01.`, 
+      type: 'EXCEPTION' 
+    }, ...prev]);
+
+    alert('🚨 CRITICAL EMERGENCY SOS: Driver panic alert dispatched to School Transport Control & Parents!');
   };
 
   // Demo Handler: Simulate Drop-Off Event
@@ -209,7 +272,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className={`min-h-screen flex flex-col font-sans transition-colors ${
+      isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'
+    }`}>
       
       {/* Header Bar */}
       <Header 
@@ -221,15 +286,21 @@ export default function App() {
         onSimulateWrongBus={handleSimulateWrongBus}
         onSimulateUnregistered={handleSimulateUnregistered}
         onSimulateDropOff={handleSimulateDropOff}
+        onSimulateRouteDeviation={handleSimulateRouteDeviation}
         viewMode={viewMode}
         setViewMode={setViewMode}
+        isDarkMode={isDarkMode}
+        setIsDarkMode={setIsDarkMode}
+        notifications={notifications}
       />
 
-      {/* Supabase Connection Bar */}
-      <div className="bg-slate-900 border-b border-slate-800 py-1.5 px-4 text-center text-xs">
+      {/* Supabase Connection Status Bar */}
+      <div className={`border-b py-1.5 px-4 text-center text-xs ${
+        isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-200 border-slate-300'
+      }`}>
         <span className="inline-flex items-center gap-2 font-bold">
           <span className={`w-2 h-2 rounded-full ${dbConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-          <span>Supabase PostgreSQL Cloud:</span>
+          <span>Supabase PostgreSQL Cloud DB:</span>
           <span className={dbConnected ? "text-emerald-400 font-mono" : "text-amber-400"}>
             {dbConnected ? "CONNECTED (https://qedftfumikvtoolgwycx.supabase.co)" : "LOCAL FALLBACK ACTIVE"}
           </span>
@@ -241,7 +312,7 @@ export default function App() {
         
         {activeTab === 'PARENT' && (
           <ParentMobileApp 
-            student={students[0]}
+            students={students}
             busData={buses[0]}
             notifications={notifications}
             viewMode={viewMode}
@@ -254,6 +325,7 @@ export default function App() {
             students={students}
             onFinalizeBoardingBatch={handleFinalizeBoardingBatch}
             onSimulateGeofenceArrival={handleSimulateGeofence}
+            onSOSTriggered={handleSOSTriggered}
             viewMode={viewMode}
           />
         )}
@@ -272,8 +344,10 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-900/60 border-t border-slate-800 text-center text-[11px] text-slate-500 py-3 mt-auto">
-        SafeRide AI • "Every Stop Matters. Every Student Counts." • Zero-Hardware Student Safety
+      <footer className={`border-t text-center text-[11px] py-3 mt-auto ${
+        isDarkMode ? 'bg-slate-900/60 border-slate-800 text-slate-500' : 'bg-slate-200 border-slate-300 text-slate-600'
+      }`}>
+        SafeRide AI • "Every Stop Matters. Every Student Counts." • Zero-Hardware Student Safety Platform
       </footer>
 
     </div>

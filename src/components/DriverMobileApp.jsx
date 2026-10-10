@@ -1,15 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Bus, Camera, CheckCircle2, ShieldCheck, MapPin, Radio, 
-  UserCheck, Lock, Play, LogOut, ScanLine, ArrowRight, AlertTriangle, UserX, ChevronRight
+  UserCheck, Lock, Play, LogOut, ScanLine, ArrowRight, AlertTriangle, UserX, ChevronRight, AlertOctagon
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { updateBusGPSInDB } from '../lib/supabaseClient';
 
 export default function DriverMobileApp({ 
   busData, 
-  students, 
+  students = [], 
   onFinalizeBoardingBatch, 
   onSimulateGeofenceArrival,
+  onSOSTriggered,
   viewMode = 'MOBILE'
 }) {
   // Screen state: 'TRIP_SETUP', 'ACTIVE_TRIP', 'SCANNING_ROSTER', 'CONFIRMATION'
@@ -19,15 +21,46 @@ export default function DriverMobileApp({
   const [driverNameInput, setDriverNameInput] = useState('Rahul Kumar');
   const [selectedStopInput, setSelectedStopInput] = useState('Stop 03');
   const [locationActive, setLocationActive] = useState(true);
+  const [gpsCoords, setGpsCoords] = useState(busData ? busData.currentCoords : [12.9716, 77.5946]);
+  const [gpsAccuracy, setGpsAccuracy] = useState('High (3m)');
   const [busArrivedAtStop, setBusArrivedAtStop] = useState(false);
 
   // Scanning Session State (Multiple Student Scanning)
   const [scannedQueue, setScannedQueue] = useState([]);
   const [scanningActive, setScanningActive] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [overridePin, setOverridePin] = useState('');
+  const [selectedStudentForManual, setSelectedStudentForManual] = useState(null);
 
   const videoRef = useRef(null);
-  const currentStopStudents = students.filter(s => s.pickupStop.includes('Stop 03'));
+
+  // Real Browser Device Geolocation watchPosition
+  useEffect(() => {
+    let watchId = null;
+    if (locationActive && navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const newLat = pos.coords.latitude;
+          const newLng = pos.coords.longitude;
+          setGpsCoords([newLat, newLng]);
+          setGpsAccuracy(`High (${Math.round(pos.coords.accuracy)}m)`);
+          
+          if (busData && busData.id) {
+            updateBusGPSInDB(busData.id, newLat, newLng, '24 km/h');
+          }
+        },
+        (err) => {
+          console.warn('Browser GPS permission fallback active:', err.message);
+          setGpsAccuracy('Simulated GPS');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      );
+    }
+    return () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [locationActive, busData]);
 
   const handleStartTrip = (e) => {
     e.preventDefault();
@@ -69,7 +102,6 @@ export default function DriverMobileApp({
     setTimeout(() => {
       setScanningActive(false);
       
-      // Check if already in queue to avoid duplicates
       if (scannedQueue.some(item => item.id === studentObj.id)) return;
 
       const newItem = {
@@ -84,14 +116,13 @@ export default function DriverMobileApp({
     }, 900);
   };
 
-  // Add Unregistered Student Attempt for Demo
   const handleScanUnregisteredStudent = () => {
     setScanningActive(true);
     setTimeout(() => {
       setScanningActive(false);
       const unregItem = {
         id: 'UNKNOWN_99',
-        firstName: 'Unknown Student',
+        firstName: 'Unregistered Student',
         lastName: '',
         assignedBus: 'None',
         verificationStatus: 'UNREGISTERED',
@@ -100,7 +131,6 @@ export default function DriverMobileApp({
     }, 900);
   };
 
-  // PROCEED Button Click Handler
   const handleProceedBatch = () => {
     const validStudents = scannedQueue.filter(s => s.verificationStatus === 'VERIFIED');
     
@@ -112,6 +142,13 @@ export default function DriverMobileApp({
     onFinalizeBoardingBatch(validStudents);
     confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
     setDriverScreen('CONFIRMATION');
+  };
+
+  const handleEmergencySOS = () => {
+    if (confirm('🚨 EMERGENCY SOS: Dispatch high-priority emergency alert to School Administration & Parents?')) {
+      if (onSOSTriggered) onSOSTriggered(driverNameInput);
+      else alert('🚨 EMERGENCY SOS BROADCASTED TO TRANSPORT CONTROL');
+    }
   };
 
   const content = (
@@ -126,7 +163,7 @@ export default function DriverMobileApp({
                 <Bus className="w-8 h-8" />
               </div>
               <h2 className="text-xl font-black text-white">Driver Shift Setup</h2>
-              <p className="text-xs text-slate-400">Enter driver name and select stop number to start trip</p>
+              <p className="text-xs text-slate-400">Enter driver name & select stop number to start trip</p>
             </div>
 
             <form onSubmit={handleStartTrip} className="space-y-4 text-xs">
@@ -160,7 +197,7 @@ export default function DriverMobileApp({
                 type="submit"
                 className="w-full btn-primary py-4 text-center justify-center text-sm font-black mt-2"
               >
-                <span>START TRIP</span>
+                <span>START SHIFT</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
             </form>
@@ -190,7 +227,7 @@ export default function DriverMobileApp({
 
             <button
               onClick={() => setDriverScreen('TRIP_SETUP')}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-red-400 border border-slate-700 text-xs font-semibold"
+              className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-700 text-xs font-semibold"
             >
               End Trip
             </button>
@@ -199,8 +236,13 @@ export default function DriverMobileApp({
           {/* GPS Live Status Card */}
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2 text-xs">
             <div className="flex justify-between items-center">
-              <span className="text-slate-400">Current Location: <strong className="text-white">Active GPS</strong></span>
-              <span className="status-badge status-boarded">GPS BROADCAST ON</span>
+              <span className="text-slate-400">Current GPS: <strong className="text-white">{gpsAccuracy}</strong></span>
+              <button
+                onClick={() => setLocationActive(!locationActive)}
+                className={`status-badge ${locationActive ? 'status-boarded' : 'status-failed'}`}
+              >
+                {locationActive ? 'GPS ACTIVE' : 'GPS OFF'}
+              </button>
             </div>
             <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-slate-800">
               <div><span className="text-slate-400 block">Current Stop</span><strong className="text-white">{selectedStopInput}</strong></div>
@@ -213,7 +255,7 @@ export default function DriverMobileApp({
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-white uppercase tracking-wider">{selectedStopInput} Status</span>
               {busArrivedAtStop ? (
-                <span className="status-badge status-boarded">BUS HAS ARRIVED</span>
+                <span className="status-badge status-boarded">ARRIVED</span>
               ) : (
                 <span className="status-badge status-pending">APPROACHING</span>
               )}
@@ -225,11 +267,11 @@ export default function DriverMobileApp({
                 className="w-full btn-primary py-3.5 text-xs font-black justify-center"
               >
                 <Play className="w-4 h-4 fill-white" />
-                <span>SIMULATE STOP ARRIVAL (Sends Alert #1)</span>
+                <span>SIMULATE STOP ARRIVAL (Alert #1)</span>
               </button>
             ) : (
               <div className="space-y-2">
-                <p className="text-xs text-emerald-400 font-bold">Bus arrived at {selectedStopInput}. Alert dispatched to parents.</p>
+                <p className="text-xs text-emerald-400 font-bold">Bus arrived at {selectedStopInput}. Alert sent to parents.</p>
                 <button
                   onClick={() => setDriverScreen('SCANNING_ROSTER')}
                   className="w-full btn-success py-3.5 text-xs font-black justify-center"
@@ -240,6 +282,15 @@ export default function DriverMobileApp({
               </div>
             )}
           </div>
+
+          {/* Red SOS Emergency Trigger */}
+          <button
+            onClick={handleEmergencySOS}
+            className="w-full p-3.5 rounded-2xl bg-rose-950/80 border border-rose-500/50 text-rose-300 text-xs font-extrabold flex items-center justify-center gap-2 hover:bg-rose-900"
+          >
+            <AlertOctagon className="w-5 h-5 text-rose-400 animate-pulse" />
+            <span>EMERGENCY SOS BROADCAST</span>
+          </button>
 
         </div>
       )}
@@ -262,7 +313,7 @@ export default function DriverMobileApp({
           </div>
 
           {/* Camera Viewfinder Screen */}
-          <div className="relative h-[230px] rounded-2xl bg-black border-2 border-slate-700 overflow-hidden flex items-center justify-center">
+          <div className="relative h-[220px] rounded-2xl bg-black border-2 border-slate-700 overflow-hidden flex items-center justify-center">
             {scanningActive && <div className="laser-sweep" />}
 
             {cameraActive ? (
@@ -271,7 +322,7 @@ export default function DriverMobileApp({
               <div className="text-center space-y-2">
                 <ScanLine className="w-10 h-10 text-emerald-400 mx-auto animate-pulse" />
                 <p className="text-xs font-bold text-white">Position face inside camera frame</p>
-                <p className="text-[10px] text-slate-400">Multi-student continuous scan mode active</p>
+                <p className="text-[10px] text-slate-400">Multi-student scan mode active</p>
               </div>
             )}
 
@@ -298,14 +349,14 @@ export default function DriverMobileApp({
             <button
               onClick={() => handleScanSingleStudent(students[4])}
               disabled={scanningActive}
-              className="p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-red-300 font-bold hover:bg-slate-700"
+              className="p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-rose-300 font-bold hover:bg-slate-700"
             >
               Test Wrong Bus
             </button>
             <button
               onClick={handleScanUnregisteredStudent}
               disabled={scanningActive}
-              className="p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-red-400 font-bold hover:bg-slate-700"
+              className="p-2.5 rounded-xl bg-slate-800 border border-slate-700 text-rose-400 font-bold hover:bg-slate-700"
             >
               Test Unregistered
             </button>
@@ -315,10 +366,10 @@ export default function DriverMobileApp({
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-white uppercase tracking-wider">Students Scanned: {scannedQueue.length}</span>
-              <span className="text-[10px] text-slate-400">Continuous Roster Queue</span>
+              <span className="text-[10px] text-slate-400">Batch Queue</span>
             </div>
 
-            <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 text-xs">
+            <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1 text-xs">
               {scannedQueue.length === 0 ? (
                 <p className="text-slate-500 text-center py-4">No students scanned yet in this batch.</p>
               ) : (
@@ -332,9 +383,9 @@ export default function DriverMobileApp({
                     {item.verificationStatus === 'VERIFIED' ? (
                       <span className="status-badge status-boarded">✓ Verified</span>
                     ) : item.verificationStatus === 'WRONG_BUS' ? (
-                      <span className="status-badge status-failed">⚠️ Wrong Bus (Bus 04)</span>
+                      <span className="status-badge status-failed">⚠️ Wrong Bus</span>
                     ) : (
-                      <span className="status-badge status-failed">✕ Not Registered</span>
+                      <span className="status-badge status-failed">✕ Unregistered</span>
                     )}
                   </div>
                 ))
@@ -365,10 +416,10 @@ export default function DriverMobileApp({
           <div>
             <h2 className="text-xl font-black text-white">Boarding Confirmed</h2>
             <p className="text-xs text-emerald-300 font-bold mt-1">
-              {scannedQueue.filter(s => s.verificationStatus === 'VERIFIED').length} students successfully verified & recorded.
+              {scannedQueue.filter(s => s.verificationStatus === 'VERIFIED').length} students verified & recorded.
             </p>
             <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-              Parents have been notified. School dashboard records updated.
+              Parents notified via push alert. Database logs updated.
             </p>
           </div>
 
